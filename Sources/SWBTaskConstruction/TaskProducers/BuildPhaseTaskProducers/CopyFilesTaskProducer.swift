@@ -204,6 +204,18 @@ class CopyFilesTaskProducer: FilesBasedBuildPhaseTaskProducerBase, FilesBasedBui
     func addTasksForUngroupedFile(_ ftb: FileToBuild, _ buildFilesContext: BuildFilesProcessingContext, _ scope: MacroEvaluationScope, _ tasks: inout [any PlannedTask]) async {
         let dstFolder = computeOutputDirectory(scope)
 
+        // swift-build #1424 follow-on fix: a package target diamond-resolved to build dynamically as a
+        // framework has a dynamic-variant product reference whose name is `$(EXECUTABLE_NAME)`, which
+        // resolves to the bare binary path (e.g. `.../PackageFrameworks/RevenueCat`) rather than the
+        // `.framework` wrapper. The framework bundle IS built (`.../PackageFrameworks/RevenueCat.framework`),
+        // so embedding the bare path fails with "No such file or directory". When copying a framework whose
+        // resolved path lacks the wrapper, correct it to the `.framework`. No-op for normal framework refs.
+        var ftb = ftb
+        if ftb.fileType.isFramework, ftb.absolutePath.fileExtension != "framework" {
+            let wrapperPath = ftb.absolutePath.dirname.join("\(ftb.absolutePath.basename).framework")
+            ftb = FileToBuild(absolutePath: wrapperPath, fileType: ftb.fileType, buildFile: ftb.buildFile, additionalArgs: ftb.additionalArgs, uniquingSuffix: ftb.uniquingSuffix, shouldUsePrefixHeader: ftb.shouldUsePrefixHeader, regionVariantName: ftb.regionVariantName, indexingInputReplacement: ftb.indexingInputReplacement)
+        }
+
         // If the file is already in the destination path (e.g., a build rule placed it there), we are done and should not continue processing.
         if dstFolder.isAncestorOrEqual(of: ftb.absolutePath.dirname) {
             return
