@@ -24,6 +24,9 @@ Formatting / lint (CI enforces both):
 - `.github/scripts/format-check.sh` rejects trailing whitespace and missing final newlines on all tracked files. `.editorconfig` enforces LF, UTF-8, final newline, 4-space indent (2 for YAML/CMake).
 - New source files need the Apache license header — see `.license_header_template`.
 
+### Toolchain selection gotcha (swiftly vs `.swift-version`)
+If `swift` on `PATH` is the **swiftly shim** (`~/.swiftly/bin/swift`), it reads this repo's `.swift-version` pin (`6.2.0`) and refuses to run when that toolchain isn't installed (e.g. `launch-xcode` silently never launches Xcode). Fix: prefix commands with **`xcrun`** (`xcrun swift package …`) to use the selected Xcode's bundled toolchain directly (it ignores `.swift-version`); or `swiftly install 6.2.0`; or temporarily rename `.swift-version`. A newer Xcode toolchain (e.g. Swift 6.4) builds the repo fine.
+
 ### Testing in clients (SwiftPM / Xcode / xcodebuild)
 - **SwiftPM:** enabled by default in nightly snapshots; `--build-system swiftbuild` in Swift 6.2/6.3. To co-develop against a local SwiftPM checkout: `SWIFTCI_USE_LOCAL_DEPS=1 swift build --package-path /path/to/swiftpm`.
 - **Xcode:** `swift package --disable-sandbox launch-xcode` launches the selected Xcode wired to your modified build service.
